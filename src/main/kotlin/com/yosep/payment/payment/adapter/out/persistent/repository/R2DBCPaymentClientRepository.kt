@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono
 import java.math.BigInteger
 
 @Repository
-class R2DBCPaymentRepository(
+class R2DBCPaymentClientRepository(
     private val databaseClient: DatabaseClient,
     private val transactionalOperator: TransactionalOperator
 ) : PaymentRepository {

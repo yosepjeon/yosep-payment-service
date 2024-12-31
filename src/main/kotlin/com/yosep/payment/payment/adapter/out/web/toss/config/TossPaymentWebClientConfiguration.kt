@@ -13,7 +13,7 @@ import reactor.netty.resources.ConnectionProvider
 import java.util.*
 
 @Configuration
-class TossWebClientConfiguration(
+class TossPaymentWebClientConfiguration(
     @Value("\${PSP.toss.url}") private val baseUrl: String,
     @Value("\${PSP.toss.secretKey}") private val secretKey: String
 ) {

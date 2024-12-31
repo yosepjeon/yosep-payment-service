@@ -3,7 +3,8 @@ package com.yosep.payment.payment.adapter.`in`.web.api
 import com.yosep.payment.common.WebAdapter
 import com.yosep.payment.payment.adapter.`in`.web.request.TossPaymentConfirmRequest
 import com.yosep.payment.payment.adapter.`in`.web.response.ApiResponse
-import com.yosep.payment.payment.adapter.out.web.toss.executor.TossPaymentExecutor
+import com.yosep.payment.payment.application.port.`in`.PaymentConfirmCommand
+import com.yosep.payment.payment.application.port.`in`.PaymentConfirmUseCase
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
@@ -16,23 +17,28 @@ import reactor.core.publisher.Mono
 @Controller
 @RequestMapping("/v1/toss")
 class TossPaymentController (
-    private val tossPaymentExecutor: TossPaymentExecutor,
+    private val paymentConfirmUseCase: PaymentConfirmUseCase,
 ) {
 
+    /**
+     * TossPaymentController에서 UseCase와 연결하도록 변경
+     * 기존 코드는 연동목적의 임시 코드로 제거후 재작성
+     */
     @PostMapping("/confirm")
-    fun confirm(@RequestBody request: TossPaymentConfirmRequest): Mono<ResponseEntity<ApiResponse<String>>> {
-        println(request)
-
-        println("###########")
-        println(request)
-        return tossPaymentExecutor.execute(
+    fun confirm(@RequestBody request: TossPaymentConfirmRequest): Mono<ResponseEntity<ApiResponse<PaymentConfirmUseCase>>> {
+        val command = PaymentConfirmCommand(
             paymentKey = request.paymentKey,
             orderId = request.orderId,
-            amount = request.amount.toString()
-        ).map {
-            ResponseEntity.ok().body(
-                ApiResponse.with(HttpStatus.OK, "Ok", it)
-            )
-        }
+            amount = request.amount
+        )
+
+        return paymentConfirmUseCase.confirm(command)
+            .map {
+                ResponseEntity.ok()
+                    .body(ApiResponse.with(
+                        httpStatus = HttpStatus.OK,
+                        message = "",
+                        data = it))
+            }
     }
 }
