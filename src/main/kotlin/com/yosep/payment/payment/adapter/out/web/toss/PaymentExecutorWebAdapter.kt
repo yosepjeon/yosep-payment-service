@@ -14,5 +14,10 @@ class PaymentExecutorWebAdapter (
 
   override fun execute(command: PaymentConfirmCommand): Mono<PaymentExecutionResult> {
     return paymentExecutor.execute(command)
+      .map {
+        println("!!!!!")
+        println(it)
+        return@map it
+      }
   }
 }

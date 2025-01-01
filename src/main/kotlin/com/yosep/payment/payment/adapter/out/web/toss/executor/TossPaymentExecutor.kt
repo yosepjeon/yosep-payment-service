@@ -1,5 +1,6 @@
 package com.yosep.payment.payment.adapter.out.web.toss.executor
 
+import com.yosep.payment.common.objectMapper
 import com.yosep.payment.payment.adapter.out.web.exception.PSPConfirmationException
 import com.yosep.payment.payment.adapter.out.web.exception.TossPaymentError
 import com.yosep.payment.payment.adapter.out.web.response.TossFailureResponse
@@ -16,8 +17,9 @@ import java.time.format.DateTimeFormatter
 @Component
 class TossPaymentExecutor(
     private val tossPaymentWebClient: WebClient,
-    private val uri: String = "v1/payments/confirm",
 ) : PaymentExecutor {
+
+    private val uri: String = "v1/payments/confirm"
 
     override fun execute(command: PaymentConfirmCommand): Mono<PaymentExecutionResult> {
         return tossPaymentWebClient.post()
@@ -61,7 +63,7 @@ class TossPaymentExecutor(
                             it.approvedAt,
                             DateTimeFormatter.ISO_OFFSET_DATE_TIME
                         ),
-                        pspRawData = it.toString(),
+                        pspRawData = objectMapper.writeValueAsString(it),
                         orderName = it.orderName,
                         pspConfirmationStatus = PSPConfirmationStatus.get(it.status),
                         totalAmount = it.totalAmount.toLong()

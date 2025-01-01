@@ -5,6 +5,7 @@ import com.yosep.payment.payment.adapter.`in`.web.request.TossPaymentConfirmRequ
 import com.yosep.payment.payment.adapter.`in`.web.response.ApiResponse
 import com.yosep.payment.payment.application.port.`in`.PaymentConfirmCommand
 import com.yosep.payment.payment.application.port.`in`.PaymentConfirmUseCase
+import com.yosep.payment.payment.domain.PaymentConfirmationResult
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
@@ -25,20 +26,16 @@ class TossPaymentController (
      * 기존 코드는 연동목적의 임시 코드로 제거후 재작성
      */
     @PostMapping("/confirm")
-    fun confirm(@RequestBody request: TossPaymentConfirmRequest): Mono<ResponseEntity<ApiResponse<PaymentConfirmUseCase>>> {
+    fun confirm(@RequestBody request: TossPaymentConfirmRequest): Mono<ResponseEntity<ApiResponse<PaymentConfirmationResult>>> {
         val command = PaymentConfirmCommand(
             paymentKey = request.paymentKey,
             orderId = request.orderId,
-            amount = request.amount
+            amount = request.amount.toLong()
         )
 
         return paymentConfirmUseCase.confirm(command)
-            .map {
-                ResponseEntity.ok()
-                    .body(ApiResponse.with(
-                        httpStatus = HttpStatus.OK,
-                        message = "",
-                        data = it))
+            .map { ResponseEntity.ok()
+                .body(ApiResponse.with(HttpStatus.OK, "", it))
             }
     }
 }

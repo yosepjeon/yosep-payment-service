@@ -29,10 +29,8 @@ class R2DBCPaymentDatabaseHelper(
                         buyerId = results.first()["buyer_id"] as Long,
                         paymentKey = results.first()["payment_key"] as String?,
                         paymentType = if (results.first()["type"] != null) PaymentType.get(results.first()["type"] as String) else null,
-                        paymentMethod = if (results.first()["method"] != null) PaymentMethod.valueOf(
-                            results.first()["method"] as String
-                        ) else null,
-                        approvedAt = if (results.first()["approved_at"] != null) (results.first()["approved_at"] as ZonedDateTime).toLocalDateTime() else null,
+                        paymentMethod = if (results.first()["method"] != null) PaymentMethod.valueOf(results.first()["method"] as String) else null,
+                        approvedAt = if (results.first()["approved_at"] != null) (results.first()["approved_at"] as LocalDateTime) else null,
                         isPaymentDone = ((results.first()["is_payment_done"] as Byte).toInt() == 1),
                         paymentOrders = results.map { result ->
                             PaymentOrder(
@@ -55,17 +53,12 @@ class R2DBCPaymentDatabaseHelper(
     }
 
     override fun clean(): Mono<Void> {
-        return deletePaymentOrders()
+        return deletePaymentOrderHistories()
+            .flatMap { deletePaymentOrders() }
             .flatMap { deletePaymentEvents() }
+//            .flatMap { deleteOutboxes() }
             .`as`(transactionalOperator::transactional)
             .then()
-
-//        return deletePaymentOrderHistories()
-//            .flatMap { deletePaymentOrders() }
-//            .flatMap { deletePaymentEvents() }
-//            .flatMap { deleteOutboxes() }
-//            .`as`(transactionalOperator::transactional)
-//            .then()
     }
 
     private fun deletePaymentOrderHistories(): Mono<Long> {
