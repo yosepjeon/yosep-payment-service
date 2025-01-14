@@ -7,19 +7,21 @@ import com.yosep.payment.payment.adapter.out.web.response.TossFailureResponse
 import com.yosep.payment.payment.adapter.out.web.response.TossPaymentConfirmationResponse
 import com.yosep.payment.payment.application.port.`in`.PaymentConfirmCommand
 import com.yosep.payment.payment.domain.*
+import io.netty.handler.timeout.TimeoutException
 import org.springframework.http.HttpStatusCode
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
+import reactor.util.retry.Retry
+import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 @Component
 class TossPaymentExecutor(
     private val tossPaymentWebClient: WebClient,
-) : PaymentExecutor {
-
     private val uri: String = "v1/payments/confirm"
+) : PaymentExecutor {
 
     override fun execute(command: PaymentConfirmCommand): Mono<PaymentExecutionResult> {
         return tossPaymentWebClient.post()
@@ -74,5 +76,13 @@ class TossPaymentExecutor(
                     isRetryable = false
                 )
             }
+            .retryWhen(
+                Retry.backoff(2, Duration.ofSeconds(1)).jitter(0.1)
+                .filter { (it is PSPConfirmationException && it.isRetryableError) || it is TimeoutException }
+                    .doBeforeRetry { println("before retry hook: retryCount: ${it.totalRetries()}, errorCode: ${(it.failure() as PSPConfirmationException).errorCode}, isUnknown: ${(it.failure() as PSPConfirmationException).isUnknown}") }
+                .onRetryExhaustedThrow { _, retrySignal ->
+                    retrySignal.failure()
+                }
+            )
     }
 }

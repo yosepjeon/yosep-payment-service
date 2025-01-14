@@ -28,4 +28,8 @@ data class PaymentEvent (
     fun isFailure(): Boolean {
         return paymentOrders.all { it.paymentStatus == PaymentStatus.FAILURE }
     }
+
+    fun isUnknown(): Boolean {
+        return paymentOrders.all { it.paymentStatus == PaymentStatus.UNKNOWN }
+    }
 }
