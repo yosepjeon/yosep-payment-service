@@ -7,7 +7,6 @@ import reactor.core.publisher.Mono
 import reactor.kotlin.core.publisher.toMono
 import java.math.BigDecimal
 import java.time.LocalDateTime
-import java.time.ZonedDateTime
 
 class R2DBCPaymentDatabaseHelper(
     private val databaseClient: DatabaseClient,
@@ -56,7 +55,7 @@ class R2DBCPaymentDatabaseHelper(
         return deletePaymentOrderHistories()
             .flatMap { deletePaymentOrders() }
             .flatMap { deletePaymentEvents() }
-//            .flatMap { deleteOutboxes() }
+            .flatMap { deleteOutboxes() }
             .`as`(transactionalOperator::transactional)
             .then()
     }

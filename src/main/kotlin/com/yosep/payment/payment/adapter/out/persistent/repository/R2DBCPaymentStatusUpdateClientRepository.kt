@@ -3,6 +3,7 @@ package com.yosep.payment.payment.adapter.out.persistent.repository
 import com.yosep.payment.payment.adapter.out.exception.PaymentAlreadyProcessedException
 import com.yosep.payment.payment.application.port.out.PaymentStatusUpdateCommand
 import com.yosep.payment.payment.domain.PaymentStatus
+import com.yosep.payment.payment.domain.paymentEventMessagePublisher
 import org.springframework.r2dbc.core.DatabaseClient
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.reactive.TransactionalOperator
@@ -13,6 +14,8 @@ import reactor.core.publisher.Mono
 class R2DBCPaymentStatusUpdateClientRepository(
     private val databaseClient: DatabaseClient,
     private val transactionalOperator: TransactionalOperator,
+    private val paymentOutboxRepository: PaymentOutboxRepository,
+    private val paymentEventMessagePublisher: paymentEventMessagePublisher
 ) : PaymentStatusUpdateRepository {
 
     override fun updatePaymentStatusToExecuting(
@@ -35,7 +38,7 @@ class R2DBCPaymentStatusUpdateClientRepository(
 
     override fun updatePaymentStatus(command: PaymentStatusUpdateCommand): Mono<Boolean> {
         return when (command.status) {
-            PaymentStatus.SUCCESS -> updatePaymentStatusToSuccess(command)
+            PaymentStatus.SUCCESS -> updatePaymentStatusToSuccessNoCdc(command)
             PaymentStatus.FAILURE -> updatePaymentStatusToFailure(command)
             PaymentStatus.UNKNOWN -> updatePaymentStatusToUnknown(command)
             else -> error("결제 상태 (status: ${command.status}) 는 올바르지 않은 결제 상태입니다.")
@@ -117,12 +120,26 @@ class R2DBCPaymentStatusUpdateClientRepository(
             .rowsUpdated()
     }
 
-    private fun updatePaymentStatusToSuccess(command: PaymentStatusUpdateCommand): Mono<Boolean> {
+    private fun updatePaymentStatusToSuccessCdc(command: PaymentStatusUpdateCommand): Mono<Boolean> {
         return selectPaymentOrderStatus(command.orderId)
             .collectList()
             .flatMap { insertPaymentHistory(it, command.status, "PAYMENT_CONFIRMATION_DONE") }
             .flatMap { updatePaymentOrderStatus(command.orderId, command.status) }
             .flatMap { updatePaymentEventExtraDetails(command) }
+            .flatMap { paymentOutboxRepository.insertOutbox(command) }
+            .flatMap { paymentEventMessagePublisher.publishEvent(it) }
+            .`as`(transactionalOperator::transactional)
+            .thenReturn(true)
+    }
+
+    private fun updatePaymentStatusToSuccessNoCdc(command: PaymentStatusUpdateCommand): Mono<Boolean> {
+        return selectPaymentOrderStatus(command.orderId)
+            .collectList()
+            .flatMap { insertPaymentHistory(it, command.status, "PAYMENT_CONFIRMATION_DONE") }
+            .flatMap { updatePaymentOrderStatus(command.orderId, command.status) }
+            .flatMap { updatePaymentEventExtraDetails(command) }
+            .flatMap { paymentOutboxRepository.insertOutbox(command) }
+            .flatMap { paymentEventMessagePublisher.publishEvent(it) }
             .`as`(transactionalOperator::transactional)
             .thenReturn(true)
     }
