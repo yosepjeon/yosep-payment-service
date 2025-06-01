@@ -20,9 +20,7 @@ class PaymentEventMessageRelayService(
     @Scheduled(fixedDelay = 1, initialDelay = 1, timeUnit = TimeUnit.SECONDS)
     override fun relay() {
         loadPendingPaymentEventMessagePort.getPendingPaymentEventMessage()
-            .map {
-
-            }
+            .map { dispatchEventMessagePort.dispatch(it) }
             .onErrorContinue{ err, _ -> Logger.error("messageRelay", err.message ?: "failed to relay message.", err) }
             .subscribeOn(scheduler)
             .subscribe()
